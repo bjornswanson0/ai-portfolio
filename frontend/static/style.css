@@ -1341,6 +1341,7 @@ details[open] summary { color: var(--text); }
   color: #fff;
   box-shadow: none;
 }
+.range-tab.active[data-dir="down"] { background: var(--red); }
 .tab-pct {
   display: block;
   font-size: 9px;

@@ -1216,6 +1216,7 @@ function setChartRange(limit, btn) {
   localStorage.setItem('chart-range', limit);
   document.querySelectorAll('.range-tab').forEach(b => {
     b.classList.remove('active');
+    delete b.dataset.dir;
     if (b.dataset.label) b.textContent = b.dataset.label;
   });
   _applyAllTabReturns();
@@ -1451,9 +1452,12 @@ async function loadChart(limit = 30) {
     // Update all range tabs with stored returns
     _rangeReturns[limit] = periodPct;
     _applyAllTabReturns();
-    // Re-apply active styling after innerHTML rebuild
+    // Re-apply active styling after innerHTML rebuild; color tab to match period direction
     const activeTab = document.querySelector('.range-tab.active[data-label]');
-    if (activeTab) activeTab.classList.add('active');
+    if (activeTab) {
+      activeTab.classList.add('active');
+      activeTab.dataset.dir = isUp ? 'up' : 'down';
+    }
 
     // Keep hero sub in sync with the active chart period
     const statSub = $('stat-value-sub');
