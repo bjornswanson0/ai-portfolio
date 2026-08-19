@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Setup — AI Portfolio Manager</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .onboarding-wrap { max-width: 680px; margin: 0 auto; padding: 32px 20px; }
+    .hero { margin-bottom: 36px; }
+    .hero h1 { font-size: 26px; font-weight: 800; }
+    .hero p { color: var(--muted); margin-top: 6px; font-size: 15px; }
+    .step-label { display: inline-block; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; letter-spacing: .05em; }
+
+    /* Watchlist generation */
+    .generate-btn { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; }
+    .generate-btn:hover { opacity: .88; }
+    .generate-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .picks-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+    .pick-card {
+      display: flex; align-items: flex-start; gap: 12px;
+      border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px;
+      background: var(--surface);
+    }
+    .pick-card.removed { opacity: .35; }
+    .pick-left { flex-shrink: 0; }
+    .pick-symbol { font-size: 15px; font-weight: 800; }
+    .pick-name { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .pick-tier { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block; }
+    .tier-core { background: #dcfce7; color: #15803d; }
+    .tier-speculative { background: #fef9c3; color: #854d0e; }
+    .pick-reason { flex: 1; font-size: 13px; color: var(--muted); line-height: 1.5; }
+    .pick-remove { flex-shrink: 0; background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 18px; padding: 0 4px; line-height: 1; }
+    .pick-remove:hover { color: var(--red); }
+
+    .watchlist-summary { font-size: 13px; color: var(--muted); margin-top: 10px; }
+    .watchlist-summary strong { color: var(--text); }
+
+    .manual-toggle { font-size: 12px; color: var(--accent); cursor: pointer; margin-top: 8px; display: inline-block; }
+    #manual-watchlist { display: none; margin-top: 10px; }
+
+    /* Show/hide password toggle */
+    .pw-wrap { position: relative; }
+    .pw-wrap input { padding-right: 38px; }
+    .pw-toggle {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 15px; line-height: 1; padding: 2px;
+    }
+    .pw-toggle:hover { color: var(--text); }
+
+    /* Inline error/info banners */
+    .inline-error {
+      background: #fef2f2; border: 1px solid #fca5a5; color: #dc2626;
+      border-radius: var(--radius-sm); padding: 10px 14px;
+      font-size: 13px; margin-top: 8px; display: none;
+    }
+    body.dark .inline-error { background: #3b0a0a; border-color: #7f1d1d; color: #fca5a5; }
+
+    /* Dark mode pick-tier badges */
+    body.dark .tier-core { background: #14532d; color: #86efac; }
+    body.dark .tier-speculative { background: #422006; color: #fde68a; }
+
+    /* Back link */
+    .back-link { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; text-decoration: none; margin-bottom: 20px; }
+    .back-link:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+<script>if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');</script>
+<div class="onboarding-wrap">
+
+  <a href="/" class="back-link">← Dashboard</a>
+  <div class="hero">
+    <h1>AI Portfolio Manager</h1>
+    <p>Claude manages your portfolio. Set it up once, let it run.</p>
+  </div>
+
+  <form id="setup-form">
+
+    <!-- STEP 1: Alpaca -->
+    <div class="card form-section">
+      <div class="step-label">STEP 1</div>
+      <h2>Alpaca Account</h2>
+      <p>Get free paper trading API keys at <strong>alpaca.markets</strong> — no deposit required to start.</p>
+
+      <div class="field">
+        <label>Mode</label>
+        <div class="toggle-group">
+          <div class="toggle-btn active" data-val="paper" onclick="setMode(this)">Paper (Fake Money)</div>
+          <div class="toggle-btn" data-val="live" onclick="setMode(this)">Live (Real Money)</div>
+        </div>
+        <input type="hidden" id="mode" value="paper">
+      </div>
+
+      <div id="live-warning" class="warning-banner">
+        Live mode uses real money. Make sure your keys have trading permissions and you understand the risks.
+      </div>
+
+      <div class="field">
+        <label>Paper API Key</label>
+        <input type="text" id="alpaca_paper_key" placeholder="PK...">
+      </div>
+      <div class="field">
+        <label>Paper API Secret</label>
+        <div class="pw-wrap">
+          <input type="password" id="alpaca_paper_secret" placeholder="••••••••">
+          <button type="button" class="pw-toggle" onclick="togglePw('alpaca_paper_secret',this)" title="Show/hide">👁</button>
+        </div>
+      </div>
+
+      <details>
+        <summary>Live trading keys (optional)</summary>
+        <div class="field" style="margin-top:10px">
+          <label>Live API Key</label>
+          <input type="text" id="alpaca_live_key" placeholder="PK...">
+        </div>
+        <div class="field">
+          <label>Live API Secret</label>
+          <div class="pw-wrap">
+            <input type="password" id="alpaca_live_secret" placeholder="••••••••">
+            <button type="button" class="pw-toggle" onclick="togglePw('alpaca_live_secret',this)" title="Show/hide">👁</button>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <!-- STEP 2: Anthropic -->
+    <div class="card form-section">
+      <div class="step-label">STEP 2</div>
+      <h2>Anthropic API Key</h2>
+      <p>Claude makes the trading decisions. Get a key at <strong>console.anthropic.com</strong>.</p>
+      <div class="field">
+        <label>Anthropic API Key</label>
+        <div class="pw-wrap">
+          <input type="password" id="anthropic_api_key" placeholder="sk-ant-...">
+          <button type="button" class="pw-toggle" onclick="togglePw('anthropic_api_key',this)" title="Show/hide">👁</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Risk & Sectors -->
+    <div class="card form-section">
+      <div class="step-label">STEP 3</div>
+      <h2>Risk Profile</h2>
+      <p>This shapes how aggressively Claude trades and sizes positions.</p>
+      <div class="field">
+        <div class="toggle-group">
+          <div class="toggle-btn" data-val="conservative" onclick="setRisk(this)">Conservative</div>
+          <div class="toggle-btn active" data-val="moderate" onclick="setRisk(this)">Moderate</div>
+          <div class="toggle-btn" data-val="aggressive" onclick="setRisk(this)">Aggressive</div>
+        </div>
+        <input type="hidden" id="risk_tolerance" value="moderate">
+      </div>
+
+      <h2 style="margin-top:20px">Sectors</h2>
+      <p>Pick the areas you care about. Claude uses this to shape your watchlist.</p>
+      <div class="checkbox-grid" id="sectors-grid">
+        <label class="checkbox-item"><input type="checkbox" value="Technology"> Technology</label>
+        <label class="checkbox-item"><input type="checkbox" value="Healthcare"> Healthcare</label>
+        <label class="checkbox-item"><input type="checkbox" value="Energy"> Energy</label>
+        <label class="checkbox-item"><input type="checkbox" value="Consumer Discretionary"> Consumer Discretionary</label>
+        <label class="checkbox-item"><input type="checkbox" value="Financials"> Financials</label>
+        <label class="checkbox-item"><input type="checkbox" value="Industrials"> Industrials</label>
+        <label class="checkbox-item"><input type="checkbox" value="Clean Energy"> Clean Energy</label>
+        <label class="checkbox-item"><input type="checkbox" value="AI & Semiconductors"> AI & Semiconductors</label>
+        <label class="checkbox-item"><input type="checkbox" value="REITs"> REITs</label>
+      </div>
+    </div>
+
+    <!-- STEP 4: Watchlist (AI-generated) -->
+    <div class="card form-section">
+      <div class="step-label">STEP 4</div>
+      <h2>Your Watchlist</h2>
+      <p>Tell Claude about yourself and it'll pick stocks that match you — each one with a reason why.</p>
+
+      <div class="field">
+        <label>Products & services you use or love</label>
+        <textarea id="profile_products" rows="2" placeholder="e.g. I use Apple products every day, shop on Amazon, use Robinhood for investing, love Tesla..."></textarea>
+      </div>
+      <div class="field">
+        <label>Trends or themes that excite you</label>
+        <textarea id="profile_trends" rows="2" placeholder="e.g. AI, space exploration, clean energy, biotech breakthroughs, crypto infrastructure..."></textarea>
+      </div>
+      <div class="field">
+        <label>Anything you want to avoid</label>
+        <textarea id="profile_avoid" rows="2" placeholder="e.g. tobacco, gambling, oil & gas, Chinese companies, anything too speculative..."></textarea>
+      </div>
+      <div class="field">
+        <label>Anything else Claude should know</label>
+        <textarea id="profile_other" rows="2" placeholder="e.g. I'm 26, long-term focused, don't panic-sell, interested in companies I can explain to a friend..."></textarea>
+      </div>
+
+      <button type="button" class="generate-btn" id="generate-btn" onclick="generateWatchlist()">
+        Generate My Watchlist with Claude
+      </button>
+      <div class="inline-error" id="generate-error"></div>
+
+      <!-- Results -->
+      <div id="picks-container" style="display:none">
+        <div class="watchlist-summary" id="picks-summary"></div>
+        <div class="picks-grid" id="picks-grid"></div>
+        <span class="manual-toggle" onclick="toggleManual()">Enter tickers manually instead</span>
+      </div>
+
+      <!-- Manual fallback -->
+      <div id="manual-watchlist">
+        <div class="field" style="margin-top:8px">
+          <label>Tickers (one per line)</label>
+          <textarea id="watchlist-manual" rows="6" placeholder="AAPL&#10;MSFT&#10;NVDA&#10;GOOGL&#10;AMZN"></textarea>
+        </div>
+      </div>
+
+      <h2 style="margin-top:24px">Portfolio Limits</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div class="field">
+          <label style="display:flex;justify-content:space-between;align-items:center">
+            Max Portfolio ($)
+            <span id="use-full-btn" onclick="useFullBalance()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:600;text-transform:none;letter-spacing:0">Use full balance</span>
+          </label>
+          <input type="number" id="max_portfolio_value" value="10000" min="100">
+        </div>
+        <div class="field">
+          <label>Max Position (%)</label>
+          <input type="number" id="max_position_pct" value="20" min="5" max="100">
+        </div>
+        <div class="field">
+          <label>Max # Positions</label>
+          <input type="number" id="max_positions" value="8" min="1" max="50">
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 5: Email & Schedule -->
+    <div class="card form-section">
+      <div class="step-label">STEP 5</div>
+      <h2>Email Report</h2>
+      <p>Daily summary sent after each session. Uses Gmail App Password.</p>
+      <div class="field">
+        <label>Report To</label>
+        <input type="email" id="report_to" value="bjorn.swanson@accenture.com">
+      </div>
+      <details>
+        <summary>SMTP settings (Gmail defaults pre-filled)</summary>
+        <div style="margin-top:10px;display:grid;grid-template-columns:2fr 1fr;gap:12px">
+          <div class="field"><label>SMTP Host</label><input type="text" id="smtp_host" value="smtp.gmail.com"></div>
+          <div class="field"><label>SMTP Port</label><input type="number" id="smtp_port" value="587"></div>
+        </div>
+        <div class="field"><label>Gmail Address</label><input type="email" id="smtp_user" placeholder="you@gmail.com"></div>
+        <div class="field"><label>App Password</label>
+          <div class="pw-wrap">
+            <input type="password" id="smtp_password" placeholder="xxxx xxxx xxxx xxxx">
+            <button type="button" class="pw-toggle" onclick="togglePw('smtp_password',this)" title="Show/hide">👁</button>
+          </div>
+        </div>
+      </details>
+
+      <h2 style="margin-top:20px">Daily Schedule</h2>
+      <p>When Claude runs each trading day (Eastern Time). Default is 9:35 AM to skip the open.</p>
+      <div class="field" style="max-width:140px">
+        <label>Run Time (ET)</label>
+        <input type="time" id="schedule_time" value="09:35">
+      </div>
+    </div>
+
+    <div class="inline-error" id="save-error" style="margin-bottom:12px"></div>
+    <div class="form-footer">
+      <button type="submit" class="btn btn-primary" id="submit-btn">Save & Launch Dashboard</button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  // ── Show/hide password ────────────────────────────────────────────────
+  function togglePw(id, btn) {
+    const inp = document.getElementById(id);
+    const isText = inp.type === 'text';
+    inp.type = isText ? 'password' : 'text';
+    btn.style.opacity = isText ? '0.5' : '1';
+  }
+
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = msg ? 'block' : 'none';
+  }
+
+  // ── Toggle helpers ────────────────────────────────────────────────────
+  async function useFullBalance() {
+    const btn = document.getElementById('use-full-btn');
+    btn.textContent = 'Loading...';
+    try {
+      const data = await fetch('/api/portfolio').then(r => r.json());
+      const balance = Math.floor(data.portfolio_value || data.cash || 0);
+      document.getElementById('max_portfolio_value').value = balance;
+      btn.textContent = `Set to $${balance.toLocaleString()}`;
+      setTimeout(() => { btn.textContent = 'Use full balance'; }, 2500);
+    } catch(e) {
+      btn.textContent = 'Could not load balance';
+      setTimeout(() => { btn.textContent = 'Use full balance'; }, 2000);
+    }
+  }
+
+  function setMode(el) {
+    document.querySelectorAll('[onclick="setMode(this)"]').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('mode').value = el.dataset.val;
+    document.getElementById('live-warning').style.display = el.dataset.val === 'live' ? 'block' : 'none';
+  }
+
+  function setRisk(el) {
+    document.querySelectorAll('[onclick="setRisk(this)"]').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('risk_tolerance').value = el.dataset.val;
+  }
+
+  function toggleManual() {
+    const m = document.getElementById('manual-watchlist');
+    m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  }
+
+  // ── Watchlist generation ──────────────────────────────────────────────
+  let generatedPicks = [];
+
+  async function generateWatchlist() {
+    const btn = document.getElementById('generate-btn');
+    const apiKey = document.getElementById('anthropic_api_key').value.trim();
+    if (!apiKey) {
+      showError('generate-error', 'Enter your Anthropic API key (Step 2) before generating.');
+      document.getElementById('anthropic_api_key').focus();
+      return;
+    }
+    showError('generate-error', '');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="border-color:#fff;border-top-color:transparent"></span> Claude is building your watchlist...';
+
+    const sectors = [...document.querySelectorAll('#sectors-grid input:checked')].map(i => i.value);
+
+    const payload = {
+      products_used: document.getElementById('profile_products').value.trim(),
+      trends_excited: document.getElementById('profile_trends').value.trim(),
+      avoid: document.getElementById('profile_avoid').value.trim(),
+      other: document.getElementById('profile_other').value.trim(),
+      risk_tolerance: document.getElementById('risk_tolerance').value,
+      sectors,
+    };
+
+    try {
+      const res = await fetch('/api/generate-watchlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Generation failed');
+      }
+
+      const data = await res.json();
+      generatedPicks = data.picks.map(p => ({ ...p, removed: false }));
+      renderPicks();
+    } catch (e) {
+      showError('generate-error', 'Error: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Regenerate Watchlist';
+    }
+  }
+
+  function renderPicks() {
+    const container = document.getElementById('picks-container');
+    const grid = document.getElementById('picks-grid');
+    const summary = document.getElementById('picks-summary');
+    container.style.display = 'block';
+
+    const active = generatedPicks.filter(p => !p.removed);
+    const core = active.filter(p => p.tier === 'core').length;
+    const spec = active.filter(p => p.tier === 'speculative').length;
+    summary.innerHTML = `<strong>${active.length} stocks selected</strong> — ${core} core, ${spec} speculative. Click × to remove any you don't want.`;
+
+    grid.innerHTML = generatedPicks.map((p, i) => `
+      <div class="pick-card ${p.removed ? 'removed' : ''}" id="pick-${i}">
+        <div class="pick-left">
+          <div class="pick-symbol">${p.symbol}</div>
+          <div class="pick-name">${p.name}</div>
+          <span class="pick-tier tier-${p.tier}">${p.tier}</span>
+        </div>
+        <div class="pick-reason">${p.reason}</div>
+        <button type="button" class="pick-remove" onclick="togglePick(${i})" title="${p.removed ? 'Add back' : 'Remove'}">
+          ${p.removed ? '+' : '×'}
+        </button>
+      </div>
+    `).join('');
+  }
+
+  function togglePick(i) {
+    generatedPicks[i].removed = !generatedPicks[i].removed;
+    renderPicks();
+  }
+
+  // ── Build final watchlist for save ───────────────────────────────────
+  function getFinalWatchlist() {
+    if (generatedPicks.length > 0) {
+      return generatedPicks.filter(p => !p.removed).map(p => p.symbol);
+    }
+    // Fall back to manual
+    const raw = document.getElementById('watchlist-manual').value;
+    return raw.split('\n').map(s => s.trim().toUpperCase()).filter(Boolean);
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────────
+  document.getElementById('setup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const watchlist = getFinalWatchlist();
+
+    if (watchlist.length === 0) {
+      showError('save-error', 'Add at least one stock to your watchlist (Step 4) before saving.');
+      document.querySelector('.card:nth-child(4)').scrollIntoView({behavior:'smooth'});
+      return;
+    }
+    showError('save-error', '');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+    const scheduleTime = document.getElementById('schedule_time').value.split(':');
+    const sectors = [...document.querySelectorAll('#sectors-grid input:checked')].map(i => i.value);
+
+    const payload = {
+      alpaca_paper_key: document.getElementById('alpaca_paper_key').value.trim(),
+      alpaca_paper_secret: document.getElementById('alpaca_paper_secret').value.trim(),
+      alpaca_live_key: document.getElementById('alpaca_live_key').value.trim(),
+      alpaca_live_secret: document.getElementById('alpaca_live_secret').value.trim(),
+      anthropic_api_key: document.getElementById('anthropic_api_key').value.trim(),
+      smtp_host: document.getElementById('smtp_host').value.trim(),
+      smtp_port: parseInt(document.getElementById('smtp_port').value),
+      smtp_user: document.getElementById('smtp_user').value.trim(),
+      smtp_password: document.getElementById('smtp_password').value.trim(),
+      report_to: document.getElementById('report_to').value.trim(),
+      mode: document.getElementById('mode').value,
+      risk_tolerance: document.getElementById('risk_tolerance').value,
+      sectors,
+      watchlist,
+      max_portfolio_value: parseFloat(document.getElementById('max_portfolio_value').value),
+      max_position_pct: parseFloat(document.getElementById('max_position_pct').value),
+      max_positions: parseInt(document.getElementById('max_positions').value),
+      schedule_hour: parseInt(scheduleTime[0]),
+      schedule_minute: parseInt(scheduleTime[1]),
+    };
+
+    const res = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (res.ok) {
+      window.location.href = '/';
+    } else {
+      const err = await res.json().catch(() => ({}));
+      showError('save-error', 'Save failed: ' + (err.detail || 'Check the terminal for details.'));
+      btn.disabled = false;
+      btn.textContent = 'Save & Launch Dashboard';
+    }
+  });
+</script>
+</body>
+</html>
