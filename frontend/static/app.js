@@ -1329,10 +1329,13 @@ async function loadChart(limit = 30) {
     }).join('');
 
     // ATH + max-drawdown annotations
+    // Hoisted so the mousemove closure can annotate the crosshair tooltip at these dates
+    let _chartATHIdx = -1, _chartTroughIdx = -1, _chartDDPct = 0;
     let athMarker = '', ddMarker = '';
     if (values.length > 3) {
       const athIdx = values.indexOf(Math.max(...values));
       const isCurrentATH = athIdx === values.length - 1;
+      _chartATHIdx = athIdx; // expose to mousemove (includes current-ATH case)
       if (!isCurrentATH) {
         const ax = PAD + athIdx * xStep;
         const ay = yScale(values[athIdx]);
@@ -1349,6 +1352,8 @@ async function loadChart(limit = 30) {
         const troughAbs = athIdx + troughRel;
         const ddPct = (values[troughAbs] - values[athIdx]) / values[athIdx] * 100;
         if (troughRel > 0 && ddPct < -1.5 && troughAbs !== values.length - 1) {
+          _chartTroughIdx = troughAbs;
+          _chartDDPct     = ddPct;
           const tx = PAD + troughAbs * xStep;
           const ty = yScale(values[troughAbs]);
           const anchor2 = troughAbs > values.length * 0.78 ? 'end' : 'middle';
@@ -1685,7 +1690,13 @@ async function loadChart(limit = 30) {
       const _hasBuy = _tradeOrds.some(o => o.side === 'buy');
       const _hasSell = _tradeOrds.some(o => o.side === 'sell');
       const _tradeLabel = !_hasTrades ? '' : _hasBuy && _hasSell ? ' · traded' : _hasBuy ? ' · bought' : ' · sold';
-      tipDate.textContent = _tfmt + _tradeLabel;
+      if (idx === _chartATHIdx) {
+        tipDate.innerHTML = _tfmt + _tradeLabel + ' <span style="color:#f59e0b;font-weight:800">· ATH</span>';
+      } else if (idx === _chartTroughIdx && _chartDDPct < 0) {
+        tipDate.innerHTML = _tfmt + _tradeLabel + ` <span style="color:#dc2626;font-weight:800">· ${_chartDDPct.toFixed(1)}% DD</span>`;
+      } else {
+        tipDate.textContent = _tfmt + _tradeLabel;
+      }
       const _tipOrders = _hasTrades ? (tradeOrdersMap[labels[idx]] || []) : [];
       const _tipTradeHtml = _tipOrders.length
         ? `<div class="chart-tip-trades">${_tipOrders.slice(0, 4).map(o =>
