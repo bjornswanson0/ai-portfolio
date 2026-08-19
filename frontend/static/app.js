@@ -1508,7 +1508,9 @@ async function loadChart(limit = 30) {
         <rect id="chart-overlay" x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
       </svg>
       <div class="chart-xlabels">${xlabelsHtml}</div>
-      <div class="chart-ylabels">${yLabels}</div>
+      <div class="chart-ylabels">${yLabels}
+        <div class="chart-live-badge" style="top:${Math.max(5, Math.min(88, liveY / H * 100)).toFixed(1)}%;background:${color}">${'$' + rawValues[rawValues.length - 1].toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+      </div>
       <div class="chart-legend">
         <span class="chart-legend-dot" style="background:${color}"></span>Portfolio
         ${spyLine ? `<span class="chart-legend-dot spy-dot"></span>S&amp;P 500` : ''}
@@ -1544,6 +1546,11 @@ async function loadChart(limit = 30) {
       if (liveDot) {
         liveDot.style.transition = 'opacity .3s ease .85s';
         requestAnimationFrame(() => { liveDot.style.opacity = '1'; });
+      }
+      const liveBadge = container.querySelector('.chart-live-badge');
+      if (liveBadge) {
+        liveBadge.style.transition = 'opacity .3s ease .9s';
+        requestAnimationFrame(() => { liveBadge.style.opacity = '1'; });
       }
     });
 

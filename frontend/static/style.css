@@ -725,6 +725,21 @@ tbody tr[data-day="down"] td:first-child::before { background: var(--red); }
 @keyframes livePulse { 0% { r: 5px; opacity: .5; } 100% { r: 18px; opacity: 0; } }
 .chart-live-ring { animation: livePulse 2.2s ease-out infinite; }
 
+/* ── Chart live price badge (Y-axis pill) ── */
+.chart-live-badge {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  font-size: 9px; font-weight: 700;
+  color: #fff;
+  padding: 2px 5px;
+  border-radius: 3px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  letter-spacing: .02em;
+}
+
 /* ── P&L colors ── */
 .pos { color: var(--green); font-weight: 700; }
 .neg { color: var(--red); font-weight: 700; }
