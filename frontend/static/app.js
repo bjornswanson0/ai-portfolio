@@ -264,7 +264,7 @@ async function _preloadRangeReturns() {
     const snaps = await fetch('/api/snapshots?limit=500').then(r => r.json());
     if (snaps.length < 2) return;
     const sorted = [...snaps].reverse();
-    for (const limit of [7, 30, 200]) {
+    for (const limit of [7, 30, 65, 200]) {
       const slice = sorted.slice(-Math.min(limit, sorted.length));
       if (slice.length < 2) continue;
       const start = slice[0].total_value, end = slice[slice.length - 1].total_value;
@@ -1236,7 +1236,7 @@ async function loadChart(limit = 30) {
   if (!container) return;
   try {
     // Pick yfinance period that covers the snapshot window
-    const yfPeriod = limit <= 10 ? '7d' : limit <= 35 ? '1mo' : '1y';
+    const yfPeriod = limit <= 10 ? '7d' : limit <= 35 ? '1mo' : limit <= 90 ? '3mo' : '1y';
 
     const [data, spyRes, decisionsRes] = await Promise.all([
       fetch(`/api/snapshots?limit=${limit}`).then(r => r.json()),
@@ -4979,6 +4979,16 @@ document.addEventListener('keydown', e => {
       break;
     }
     case '3': {
+      const t3m = document.querySelector('.range-tab[data-label="3M"]');
+      if (t3m) setChartRange(65, t3m);
+      break;
+    }
+    case '4': {
+      const tytd = document.querySelector('.range-tab[data-label="YTD"]');
+      if (tytd) setChartRangeYTD(tytd);
+      break;
+    }
+    case '5': {
       const tall = document.querySelector('.range-tab[data-label="All"]');
       if (tall) setChartRange(200, tall);
       break;

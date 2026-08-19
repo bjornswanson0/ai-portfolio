@@ -51,7 +51,7 @@
     <div class="kb-row"><span class="kb-desc">Next / prev position</span><span style="display:flex;gap:6px"><kbd class="kb-key">J</kbd><kbd class="kb-key">K</kbd></span></div>
     <div class="kb-row"><span class="kb-desc">Next position (drawer open)</span><kbd class="kb-key">→</kbd></div>
     <div class="kb-row"><span class="kb-desc">Previous position (drawer open)</span><kbd class="kb-key">←</kbd></div>
-    <div class="kb-row"><span class="kb-desc">Chart range: 7D / 30D / All</span><span style="display:flex;gap:6px"><kbd class="kb-key">1</kbd><kbd class="kb-key">2</kbd><kbd class="kb-key">3</kbd></span></div>
+    <div class="kb-row"><span class="kb-desc">Chart range: 7D / 30D / 3M / YTD / All</span><span style="display:flex;gap:6px"><kbd class="kb-key">1</kbd><kbd class="kb-key">2</kbd><kbd class="kb-key">3</kbd><kbd class="kb-key">4</kbd><kbd class="kb-key">5</kbd></span></div>
     <div class="kb-row"><span class="kb-desc">Toggle chart % mode</span><kbd class="kb-key">P</kbd></div>
     <div class="kb-row"><span class="kb-desc">Quick open ticker</span><kbd class="kb-key">⌘K</kbd></div>
   </div>
@@ -149,6 +149,7 @@
           <div class="range-tabs">
             <button class="range-tab active" data-label="7D" onclick="setChartRange(7,this)">7D</button>
             <button class="range-tab" data-label="30D" onclick="setChartRange(30,this)">30D</button>
+            <button class="range-tab" data-label="3M" onclick="setChartRange(65,this)">3M</button>
             <button class="range-tab range-tab-mine" data-label="YTD" onclick="setChartRangeYTD(this)">YTD</button>
             <button class="range-tab" data-label="All" onclick="setChartRange(200,this)">All</button>
           </div>
