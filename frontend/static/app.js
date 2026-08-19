@@ -1516,6 +1516,7 @@ async function loadChart(limit = 30) {
         ${spyLine ? `<span class="chart-legend-dot spy-dot"></span>S&amp;P 500` : ''}
         ${tradeDates.size ? `<span class="chart-legend-trade-dot buy"></span>Bought<span class="chart-legend-trade-dot sell"></span>Sold` : ''}
       </div>
+      <div id="chart-xhair-label" class="chart-xhair-label"></div>
       <div id="chart-tip" class="chart-tip">
         <div class="chart-tip-date" id="chart-tip-date"></div>
         <div class="chart-tip-val" id="chart-tip-val"></div>
@@ -1554,15 +1555,16 @@ async function loadChart(limit = 30) {
       }
     });
 
-    const svg       = document.getElementById('chart-svg');
-    const overlay   = document.getElementById('chart-overlay');
-    const xhair     = document.getElementById('chart-xhair');
-    const dot       = document.getElementById('chart-dot');
-    const tip       = document.getElementById('chart-tip');
-    const tipDate   = document.getElementById('chart-tip-date');
-    const tipVal    = document.getElementById('chart-tip-val');
-    const chartLine = document.getElementById('chart-line');
-    const scrubRect = document.getElementById('chart-scrub-rect');
+    const svg        = document.getElementById('chart-svg');
+    const overlay    = document.getElementById('chart-overlay');
+    const xhair      = document.getElementById('chart-xhair');
+    const dot        = document.getElementById('chart-dot');
+    const tip        = document.getElementById('chart-tip');
+    const tipDate    = document.getElementById('chart-tip-date');
+    const tipVal     = document.getElementById('chart-tip-val');
+    const chartLine  = document.getElementById('chart-line');
+    const scrubRect  = document.getElementById('chart-scrub-rect');
+    const xhairLabel = document.getElementById('chart-xhair-label');
     const gradStops = [];
 
     // Shift chart line color during scrub (Robinhood signature); fill is always split green/red
@@ -1649,6 +1651,16 @@ async function loadChart(limit = 30) {
       dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
       dot.setAttribute('opacity', '1');
 
+      // X-axis date pill snapped under crosshair
+      if (xhairLabel) {
+        const svgBottom = svg.getBoundingClientRect().bottom - container.getBoundingClientRect().top;
+        xhairLabel.style.top  = svgBottom + 'px';
+        xhairLabel.style.left = (cx / W * 100).toFixed(2) + '%';
+        xhairLabel.textContent = new Date(labels[idx] + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
+        xhairLabel.style.opacity = '1';
+      }
+      container.classList.add('scrubbing');
+
       // Dynamic color: green if above period start, red if below (Robinhood signature)
       _applyChartColor(values[idx] >= values[0] ? '#16a34a' : '#dc2626');
       // Scrub-to-reveal: clip fill to [0, cursor x] so history "reveals" as you drag
@@ -1722,6 +1734,14 @@ async function loadChart(limit = 30) {
       if (statVal) { statVal.innerHTML = _fmtHeroValue(rawValues[idx]); statVal.dataset.scrubbing = '1'; }
       if (statSub) { statSub.innerHTML = _scrubSubHtml(idx); statSub.dataset.scrubbing = '1'; }
     }
+    function _updateXhairLabel(idx, cx) {
+      if (!xhairLabel) return;
+      const svgBottom = svg.getBoundingClientRect().bottom - container.getBoundingClientRect().top;
+      xhairLabel.style.top  = svgBottom + 'px';
+      xhairLabel.style.left = (cx / W * 100).toFixed(2) + '%';
+      xhairLabel.textContent = new Date(labels[idx] + 'T12:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'});
+      xhairLabel.style.opacity = '1';
+    }
     svg.addEventListener('touchstart', e => {
       e.preventDefault();
       const idx = _chartHitFromClientX(e.touches[0].clientX);
@@ -1730,6 +1750,8 @@ async function loadChart(limit = 30) {
       xhair.setAttribute('x1', cx); xhair.setAttribute('x2', cx); xhair.setAttribute('opacity', '0.5');
       dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('opacity', '1');
       tip.style.opacity = '0';
+      _updateXhairLabel(idx, cx);
+      container.classList.add('scrubbing');
       _heroRestoreToken++; // cancel any pending mouse restore
       _touchUpdateHero(idx);
       _applyChartColor(values[idx] >= values[0] ? '#16a34a' : '#dc2626');
@@ -1742,6 +1764,7 @@ async function loadChart(limit = 30) {
       const cx = PAD + idx * xStep, cy = yScale(values[idx]);
       xhair.setAttribute('x1', cx); xhair.setAttribute('x2', cx);
       dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
+      _updateXhairLabel(idx, cx);
       _touchUpdateHero(idx);
       _applyChartColor(values[idx] >= values[0] ? '#16a34a' : '#dc2626');
       if (scrubRect) scrubRect.setAttribute('width', Math.min(W, cx + PAD));
@@ -1749,6 +1772,8 @@ async function loadChart(limit = 30) {
     }, { passive: false });
     svg.addEventListener('touchend', () => {
       xhair.setAttribute('opacity', '0'); dot.setAttribute('opacity', '0');
+      if (xhairLabel) xhairLabel.style.opacity = '0';
+      container.classList.remove('scrubbing');
       if (scrubRect) scrubRect.setAttribute('width', W);
       _resetChartColor();
       const statVal = $('stat-value'); const statSub = $('stat-value-sub');
@@ -1779,6 +1804,8 @@ async function loadChart(limit = 30) {
       xhair.setAttribute('opacity', '0');
       dot.setAttribute('opacity', '0');
       tip.style.opacity = '0';
+      if (xhairLabel) xhairLabel.style.opacity = '0';
+      container.classList.remove('scrubbing');
       _resetChartColor();
       if (scrubRect) scrubRect.setAttribute('width', W);
 

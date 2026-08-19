@@ -1405,6 +1405,29 @@ details[open] summary { color: var(--text); }
 .chart-legend-trade-dot.buy  { background: #16a34a; }
 .chart-legend-trade-dot.sell { background: #dc2626; }
 
+.chart-xhair-label {
+  position: absolute;
+  transform: translate(-50%, 1px);
+  background: var(--text);
+  color: var(--surface);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  transition: opacity .1s;
+  z-index: 5;
+  letter-spacing: .01em;
+}
+
+/* Dim static axis labels while crosshair is active */
+.chart-container.scrubbing .chart-xlabel {
+  opacity: 0.2;
+  transition: opacity .1s;
+}
+
 .chart-tip {
   position: absolute;
   pointer-events: none;
